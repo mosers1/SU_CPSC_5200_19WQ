@@ -12,6 +12,8 @@ namespace restapi.Models
 
         RecordLine,
 
-        Remove
+        Remove,
+
+        Replace
     }
 }

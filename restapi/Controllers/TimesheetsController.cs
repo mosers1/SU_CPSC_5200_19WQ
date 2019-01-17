@@ -54,7 +54,7 @@ namespace restapi.Controllers
         }
 
         // 1. Remove (DELETE) a draft or cancelled timecard
-        [HttpDelete("{id}")]
+        [HttpDelete("{id}/delete")]
         [ProducesResponseType(200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
@@ -74,6 +74,41 @@ namespace restapi.Controllers
 
             Database.Delete(id);
             return Ok();
+        }
+
+        // 2. Replace (POST) a complete line item
+        [HttpPost("{id}/replace/{lineId}")]
+        [Produces(ContentTypes.TimesheetLine)]
+        [ProducesResponseType(typeof(AnnotatedTimecardLine), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        public IActionResult ReplaceLine(string id, int lineId, [FromBody] TimecardLine timecardLine)
+        {
+            Timecard timecard = Database.Find(id);
+            Console.WriteLine("lineId = " + lineId);
+
+            // Verify timecard exists
+            if (timecard == null)
+            {
+                return NotFound();
+            }
+
+            // Verify state allows this action
+            if (timecard.Status != TimecardStatus.Draft)
+            {
+                return StatusCode(409, new InvalidStateError() { });
+            }
+
+            // Perform the replacement
+            var updatedLine = timecard.ReplaceLine(timecardLine, lineId);
+
+            // Verify line was found and replacement occurred
+            if (updatedLine == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(updatedLine);
         }
 
         [HttpGet("{id}/lines")]
@@ -114,7 +149,7 @@ namespace restapi.Controllers
                     return StatusCode(409, new InvalidStateError() { });
                 }
 
-                var annotatedLine = timecard.AddLine(timecardLine);
+                var annotatedLine = timecard.AddLine(timecardLine, 0);
 
                 return Ok(annotatedLine);
             }

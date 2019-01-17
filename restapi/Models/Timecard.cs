@@ -87,10 +87,20 @@ namespace restapi.Models
 
                     links.Add(new ActionLink()
                     {
+                        Method = Method.Post,
+                        Type = ContentTypes.Replace,
+                        Relationship = ActionRelationship.Replace,
+                        // Not sure of proper way to request {lineId} in href. 
+                        // TODO: The functionality works, but revist later when time permits.
+                        Reference = $"/timesheets/{Identity.Value}/replace/<lineId>"
+                    });
+
+                    links.Add(new ActionLink()
+                    {
                         Method = Method.Delete,
-                        Type = ContentTypes.TimesheetLine,
+                        Type = ContentTypes.Deletion,
                         Relationship = ActionRelationship.Remove,
-                        Reference = $"/timesheets/{Identity.Value}"
+                        Reference = $"/timesheets/{Identity.Value}/delete"
                     });
 
                     break;
@@ -129,7 +139,7 @@ namespace restapi.Models
                         Method = Method.Delete,
                         Type = ContentTypes.TimesheetLine,
                         Relationship = ActionRelationship.Remove,
-                        Reference = $"/timesheets/{Identity.Value}"
+                        Reference = $"/timesheets/{Identity.Value}/delete"
                     });
 
                     break;
@@ -172,13 +182,65 @@ namespace restapi.Models
             return links;
         }
 
-        public AnnotatedTimecardLine AddLine(TimecardLine timecardLine)
+        /// <summary>
+        /// Adds a new line to the timecard.
+        /// </summary>
+        /// <param name="timecardLine"></param>
+        /// <param name="lineNum"></param>
+        /// <returns></returns>
+        public AnnotatedTimecardLine AddLine(TimecardLine timecardLine, int lineNum)
         {
             var annotatedLine = new AnnotatedTimecardLine(timecardLine);
+
+            if (lineNum == 0)
+            {
+                // Set line number in timecard (0-based)
+                annotatedLine.LineNumber = Lines.Count();
+            } else
+            {
+                annotatedLine.LineNumber = lineNum;
+            }
 
             Lines.Add(annotatedLine);
 
             return annotatedLine;
+        }
+
+        /// <summary>
+        /// Replace an existing timecard line with a new one. Maintains the line number.
+        /// </summary>
+        /// <param name="timecardLine"></param>
+        /// <param name="lineNum"></param>
+        /// <returns></returns>
+        public AnnotatedTimecardLine ReplaceLine(TimecardLine timecardLine, int lineNum)
+        {
+            AnnotatedTimecardLine oldLine = null;
+            for (int i = 0; i < Lines.Count(); ++i)
+            {
+                if (Lines[i].LineNumber == lineNum)
+                {
+                    oldLine = Lines[i];
+                    break;
+                }
+            }
+
+            if (oldLine == null)
+            {
+                // Line number not found so nothing to replace
+                return null;
+            }
+
+            // Stage new annotated line entry
+            var newLine = new AnnotatedTimecardLine(timecardLine);
+
+            // Maintain existing line number
+            newLine.LineNumber = lineNum;
+
+            // Perform the replacement
+            Lines.Remove(oldLine);
+            Lines.Add(newLine);
+
+            return newLine;
         }
     }
 }
