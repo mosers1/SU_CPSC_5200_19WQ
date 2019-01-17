@@ -53,10 +53,12 @@ namespace restapi.Controllers
             return timecard;
         }
 
+        // 1. Remove (DELETE) a draft or cancelled timecard
         [HttpDelete("{id}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(404)]
-        public IActionResult DeleteLine(string id)
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        public IActionResult Delete(string id)
         {
             Timecard timecard = Database.Find(id);
 
