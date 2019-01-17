@@ -1,5 +1,6 @@
-# Example Curl Commands:
-
+#===============================================================================
+# Example Curl Commands
+#===============================================================================
 # Let's ask the service what we can do
 curl http://localhost:5000/ --dump-header -
 
@@ -30,7 +31,9 @@ curl http://localhost:5000/timesheets/dat-1547702516/replace/0 -X POST --header 
 # Updating a timesheet line using PATCH (from Swagger UI tool)
 curl -X PATCH "http://localhost:5000/Timesheets/dat-1547751781/lines/0" -H  "accept: application/com.my-company.my-product.timesheet-line+json" -H  "Content-Type: application/json-patch+json" -d "{  \"week\": 0,  \"year\": 2019,  \"day\": \"sunday\",  \"hours\": 0,  \"project\": \"ECEGR 5050\"}"
 
-# Example Git Commands:
+#===============================================================================
+# Example Git Commands
+#===============================================================================
 git status
 git add <fileName>
 git commit -m "Commit message here."
@@ -47,3 +50,90 @@ git merge upstream/master
 git status
 git push origin master
 git status
+
+#===============================================================================
+# Homework #1 Smoke Test Commands
+#===============================================================================
+# Create a timecard (resource = 5)
+curl http://localhost:5000/timesheets -X POST --header "Content-Type: application/json" --data '{ "resource": 5 }' --dump-header -
+
+# Add a line to the time card
+curl http://localhost:5000/timesheets/dat-1547766771/lines -X POST --header "Content-Type: application/json" --data '{ "week": 2, "year": 2018, "day": "wednesday", "hours": 8, "project": "SEGR 5240" }' --dump-header -
+
+# Add another line to the time card
+curl http://localhost:5000/timesheets/dat-1547766771/lines -X POST --header "Content-Type: application/json" --data '{ "week": 2, "year": 2018, "day": "tuesday", "hours": 3, "project": "SEGR 9000" }' --dump-header -
+
+# This should fail since "dodge" is not a valid day of the week
+curl http://localhost:5000/timesheets/dat-1547766771/lines -X POST --header "Content-Type: application/json" --data '{ "week": 2, "year": 2018, "day": "dodge", "hours": 3, "project": "SEGR 9000" }' --dump-header -
+
+# Ensure timesheet is present in listing
+curl http://localhost:5000/timesheets --dump-header -.
+
+# Check what actions are possible within our timecard at this point
+curl http://localhost:5000/timesheets/dat-1547766771 --dump-header -.
+
+# Verify transitions look good
+curl http://localhost:5000/timesheets/dat-1547766771/transitions --dump-header -.
+
+# Verify the timecard lines look good
+curl http://localhost:5000/timesheets/dat-1547766771/lines --dump-header -.
+
+# Replace a line
+curl http://localhost:5000/timesheets/dat-1547766771/replace/0 -X POST --header "Content-Type: application/json" --data '{ "week": 24, "year": 2019, "day": "sunday", "hours": 2, "project": "SEGR 9999" }' --dump-header -
+
+# Verify change took effect
+curl http://localhost:5000/timesheets/dat-1547766771/lines --dump-header -.
+
+# Patch a line
+curl -X PATCH "http://localhost:5000/Timesheets/dat-1547766771/lines/0" -H  "accept: application/com.my-company.my-product.timesheet-line+json" -H  "Content-Type: application/json-patch+json" -d "{  \"week\": 0,  \"year\": 2019,  \"day\": \"sunday\",  \"hours\": 0,  \"project\": \"ECEGR 5050\"}"
+
+# Verify path took effect
+curl http://localhost:5000/timesheets/dat-1547766771/lines --dump-header -.
+
+# Attempt to delete the timecard
+curl http://localhost:5000/timesheets/dat-1547766771/delete -X DELETE --dump-header -.
+
+# Verify timecard was deleted
+curl http://localhost:5000/timesheets/ --dump-header -.
+
+# Create a new timecard
+curl http://localhost:5000/timesheets -X POST --header "Content-Type: application/json" --data '{ "resource": 1 }' --dump-header -
+
+# Add a line to the new timecard
+curl http://localhost:5000/timesheets/dat-1547767048/lines -X POST --header "Content-Type: application/json" --data '{ "week": 2, "year": 2018, "day": "wednesday", "hours": 8, "project": "SEGR 5240" }' --dump-header -
+
+# Check what actions are possible
+curl http://localhost:5000/timesheets/dat-1547767048 --dump-header -.
+
+# Attempt approval -- should fail due to state and invalid resource
+curl http://localhost:5000/timesheets/dat-1547767048/approval -X POST --header "Content-Type: application/json" --data '{ test }' --dump-header -
+
+# Attempt to submit the timesheet -- should fail due to invalid resource
+curl http://localhost:5000/timesheets/dat-1547767048/submittal -X POST --header "Content-Type: application/json" --data '{ test }' --dump-header -
+
+# Attempt to submit the timesheet -- should fail due to invalid resource
+curl http://localhost:5000/timesheets/dat-1547767048/submittal -X POST --header "Content-Type: application/json" --data '{ }' --dump-header -
+
+# Attempt to submit the timesheet -- should succeed
+curl http://localhost:5000/timesheets/dat-1547767048/submittal -X POST --header "Content-Type: application/json" --data '{"resource":1}' --dump-header -
+
+# Check available actions -- confirm we can approve, reject, cancel
+curl http://localhost:5000/timesheets/dat-1547767048 --dump-header -
+
+# Attempt approval -- should fail due to invalid resource
+curl http://localhost:5000/timesheets/dat-1547767048/approval -X POST --header "Content-Type: application/json" --data '{ test }' --dump-header -
+
+# Attempt approval -- should fail due to invalid resource
+curl http://localhost:5000/timesheets/dat-1547767048/approval -X POST --header "Content-Type: application/json" --data '{ }' --dump-header -
+
+# Attempt approval -- should fail due to timecard creator trying to approve own timecard
+curl http://localhost:5000/timesheets/dat-1547767048/approval -X POST --header "Content-Type: application/json" --data '{ "resource":1 }' --dump-header -
+
+# Attempt approval -- should fail due to invalid resource
+curl http://localhost:5000/timesheets/dat-1547767048/approval -X POST --header "Content-Type: application/json" --data '{ "resource":55 }' --dump-header -
+
+# Attempt approval -- should succeed
+curl http://localhost:5000/timesheets/dat-1547767048/approval -X POST --header "Content-Type: application/json" --data '{ "resource":5555 }' --dump-header -
+
+# Check what actions are possible -- should be in a terminal state
+curl http://localhost:5000/timesheets/dat-1547767048 --dump-header -
