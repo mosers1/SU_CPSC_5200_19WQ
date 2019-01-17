@@ -1,0 +1,32 @@
+# Example Curl Commands:
+
+# Let's ask the service what we can do
+curl http://localhost:5000/ --dump-header -
+
+# See what's in /timesheets
+curl http://localhost:5000/timesheets --dump-header -
+
+# Create a resource (i.e. person w/ ID = 1)
+curl http://localhost:5000/timesheets -X POST --header "Content-Type: application/json" --data '{ "resource": 1 }' --dump-header -
+
+# Add a line to the resource's timesheets (adjust dat-XXXXXXX as needed)
+curl http://localhost:5000/timesheets/dat-1547700917/lines -X POST --header "Content-Type: application/json" --data '{ "week": 2, "year": 2018, "day": "wednesday", "hours": 8, "project": "SEGR 5240" }' --dump-header -
+
+# Submit a timesheet
+curl http://localhost:5000/timesheets/dat-1547702516/submittal -X POST --header "Content-Type: application/json" --data '{ test }' --dump-header -
+
+# Approve a timesheet
+curl http://localhost:5000/timesheets/dat-1547702516/approval -X POST --header "Content-Type: application/json" --data '{ test }' --dump-header -
+
+# Rejecting a timesheet
+curl http://localhost:5000/timesheets/dat-1547702516/rejection -X POST --header "Content-Type: application/json" --data '{ test }' --dump-header -
+
+# Delete a timesheet
+curl http://localhost:5000/timesheets/dat-1547702516/delete -X DELETE --dump-header -
+
+
+# Example Git Commands:
+git status
+git add <fileName>
+git commit -m "Commit message here."
+git push
