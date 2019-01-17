@@ -35,3 +35,15 @@ git status
 git add <fileName>
 git commit -m "Commit message here."
 git push
+
+# Git fetch from remote master (one-time setup)
+git remote -v
+git remote add upstream https://github.com/michaeljon/SU_CPSC_5200_19WQ.git
+git remote -v
+
+# Git fetch from remote master (as needed)
+git fetch upstream
+git merge upstream/master
+git status
+git push origin master
+git status
