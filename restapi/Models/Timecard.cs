@@ -97,6 +97,16 @@ namespace restapi.Models
 
                     links.Add(new ActionLink()
                     {
+                        Method = Method.Patch,
+                        Type = ContentTypes.Update,
+                        Relationship = ActionRelationship.Update,
+                        // Not sure of proper way to request {lineId} in href. 
+                        // TODO: The functionality works, but revist later when time permits.
+                        Reference = $"/timesheets/{Identity.Value}/update/<lineId>"
+                    });
+
+                    links.Add(new ActionLink()
+                    {
                         Method = Method.Delete,
                         Type = ContentTypes.Deletion,
                         Relationship = ActionRelationship.Remove,
@@ -137,7 +147,7 @@ namespace restapi.Models
                     links.Add(new ActionLink()
                     {
                         Method = Method.Delete,
-                        Type = ContentTypes.TimesheetLine,
+                        Type = ContentTypes.Deletion,
                         Relationship = ActionRelationship.Remove,
                         Reference = $"/timesheets/{Identity.Value}/delete"
                     });
@@ -207,7 +217,8 @@ namespace restapi.Models
         }
 
         /// <summary>
-        /// Replace an existing timecard line with a new one. Maintains the line number.
+        /// Replace an existing timecard line with a new one. Maintains the same line number.
+        /// Note: Line index in the internal list is not guaranteed to be the same.
         /// </summary>
         /// <param name="timecardLine"></param>
         /// <param name="lineNum"></param>
@@ -215,6 +226,8 @@ namespace restapi.Models
         public AnnotatedTimecardLine ReplaceLine(TimecardLine timecardLine, int lineNum)
         {
             AnnotatedTimecardLine oldLine = null;
+
+            // Attempt to find entry with matching line number. Take first entry.
             for (int i = 0; i < Lines.Count(); ++i)
             {
                 if (Lines[i].LineNumber == lineNum)
@@ -241,6 +254,78 @@ namespace restapi.Models
             Lines.Add(newLine);
 
             return newLine;
+        }
+
+        /// <summary>
+        /// Updates an existing timecard line entry.
+        /// </summary>
+        /// <param name="timecardLine"></param>
+        /// <param name="lineNum"></param>
+        /// <returns></returns>
+        public AnnotatedTimecardLine UpdateLine(TimecardLine timecardLine, int lineNum)
+        {
+            AnnotatedTimecardLine updateLine = null;
+
+            // Attempt to find entry with matching line number. Take first entry.
+            for (int i = 0; i < Lines.Count(); ++i)
+            {
+                if (Lines[i].LineNumber == lineNum)
+                {
+                    updateLine = Lines[i];
+                    break;
+                }
+            }
+
+            if (updateLine == null)
+            {
+                // Line number not found so nothing to replace
+                return null;
+            }
+
+            // FUTURE: One solution for solving difficulty using the "PATCH" command
+            // would be to implement valid flags for each data item. This could be
+            // accomplished with a boolean value for each data item or using a bitfield.
+            // Deferring for now due to time constraints and to keep design simple for now
+            // even though we're making lots of assumptions.
+
+            // Step through each value and update it if it contains a "valid" value.
+
+            // Only 52 weeks in a year so hardcode 52 as the higest valid value
+            if (timecardLine.Week > 52)
+            {
+                updateLine.Week = timecardLine.Week;
+            }
+
+            // Assume year 0 is invalid
+            if (timecardLine.Year != 0)
+            {
+                updateLine.Year = timecardLine.Year;
+            }
+
+            // No easy way to update day since 0 is the enum value for Sunday.
+            // Assume people don't work Sundays for now...
+            if (timecardLine.Day != 0)
+            {
+                updateLine.Day = timecardLine.Day;
+            }
+
+            // Assume no one will enter a timecard line for 0 hours
+            if (timecardLine.Hours != 0.0)
+            {
+                updateLine.Hours = timecardLine.Hours;
+            }
+
+            if (timecardLine.Project != null && timecardLine.Project != string.Empty && timecardLine.Project != "string")
+            {
+                updateLine.Project = timecardLine.Project;
+            }
+
+            updateLine.calcWorkDate();
+            updateLine.Recorded = DateTime.UtcNow;
+
+            // NOTE: Do not update guid. Keep this the same.
+
+            return updateLine;
         }
     }
 }

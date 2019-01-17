@@ -54,13 +54,13 @@ namespace restapi.Controllers
         }
 
         // 1. Remove (DELETE) a draft or cancelled timecard
-        [HttpDelete("{id}/delete")]
+        [HttpDelete("{timecardId}/delete")]
         [ProducesResponseType(200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
-        public IActionResult Delete(string id)
+        public IActionResult Delete(string timecardId)
         {
-            Timecard timecard = Database.Find(id);
+            Timecard timecard = Database.Find(timecardId);
 
             if (timecard == null)
             {
@@ -72,20 +72,19 @@ namespace restapi.Controllers
                     return StatusCode(409, new InvalidStateError() { });
             }
 
-            Database.Delete(id);
+            Database.Delete(timecardId);
             return Ok();
         }
 
         // 2. Replace (POST) a complete line item
-        [HttpPost("{id}/replace/{lineId}")]
+        [HttpPost("{timecardId}/replace/{lineId}")]
         [Produces(ContentTypes.TimesheetLine)]
         [ProducesResponseType(typeof(AnnotatedTimecardLine), 200)]
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
-        public IActionResult ReplaceLine(string id, int lineId, [FromBody] TimecardLine timecardLine)
+        public IActionResult ReplaceLine(string timecardId, int lineId, [FromBody] TimecardLine timecardLine)
         {
-            Timecard timecard = Database.Find(id);
-            Console.WriteLine("lineId = " + lineId);
+            Timecard timecard = Database.Find(timecardId);
 
             // Verify timecard exists
             if (timecard == null)
@@ -159,17 +158,41 @@ namespace restapi.Controllers
             }
         }
 
-        [HttpPost("{timecardId}/lines/{lineId}")]
-        public IActionResult UpdateLine(string timecardId, string lineId, [FromBody] TimecardLine timecardLine)
+        // 3. Update (PATCH) a line item
+        [HttpPatch("{timecardId}/lines/{lineId}")]
+        [Produces(ContentTypes.TimesheetLine)]
+        [ProducesResponseType(typeof(AnnotatedTimecardLine), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
+        public IActionResult UpdateLine(string timecardId, int lineId, [FromBody] TimecardLine timecardLine)
         {
+            Console.WriteLine("******* timecardId = " + timecardId);
+            Console.WriteLine("******* lineId = " + lineId);
+
             Timecard timecard = Database.Find(timecardId);
 
+            // Verify timecard exists
             if (timecard == null)
             {
                 return NotFound();
             }
 
-            return Ok();
+            // Verify state allows this action
+            if (timecard.Status != TimecardStatus.Draft)
+            {
+                return StatusCode(409, new InvalidStateError() { });
+            }
+
+            // Perform the replacement
+            var updatedLine = timecard.UpdateLine(timecardLine, lineId);
+
+            // Verify line was found and patch operation occurred
+            if (updatedLine == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(updatedLine);
         }
 
         [HttpGet("{id}/transitions")]

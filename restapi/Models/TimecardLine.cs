@@ -32,7 +32,7 @@ namespace restapi.Models
             Project = line.Project;
 
             Recorded = DateTime.UtcNow;
-            workDate = FirstDateOfWeekISO8601(line.Year, line.Week).AddDays((int)line.Day - 1);
+            calcWorkDate();
             UniqueIdentifier = Guid.NewGuid();
         }
 
@@ -40,7 +40,7 @@ namespace restapi.Models
 
         public string WorkDate { get => workDate.ToString("yyyy-MM-dd"); }
 
-        public float LineNumber { get; set; }
+        public int LineNumber { get; set; }
 
         [JsonProperty("recId")]
         public int RecordIdentity { get; set; } = 0;
@@ -54,7 +54,16 @@ namespace restapi.Models
 
         public string PeriodTo { get => periodTo?.ToString("yyyy-MM-dd"); }
 
-        public string Version { get; set; } = "line-0.1";
+        public string Version { get; set; } = "line-0.2";
+
+        /// <summary>
+        /// Calculates the workDate based on the Year, Week, and/or Day.
+        /// </summary>
+        /// <returns></returns>
+        public void calcWorkDate()
+        {
+            workDate = FirstDateOfWeekISO8601(Year, Week).AddDays((int)Day - 1);
+        }
 
         private static DateTime FirstDateOfWeekISO8601(int year, int weekOfYear)
         {

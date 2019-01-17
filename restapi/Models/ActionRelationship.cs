@@ -14,6 +14,8 @@ namespace restapi.Models
 
         Remove,
 
-        Replace
+        Replace,
+
+        Update
     }
 }

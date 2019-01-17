@@ -24,6 +24,11 @@ curl http://localhost:5000/timesheets/dat-1547702516/rejection -X POST --header 
 # Delete a timesheet
 curl http://localhost:5000/timesheets/dat-1547702516/delete -X DELETE --dump-header -
 
+# Replacing an entire timesheet line
+curl http://localhost:5000/timesheets/dat-1547702516/replace/0 -X POST --header "Content-Type: application/json" --data '{ "week": 24, "year": 2019, "day": "sunday", "hours": 2, "project": "SEGR 9999" }' --dump-header -
+
+# Updating a timesheet line using PATCH (from Swagger UI tool)
+curl -X PATCH "http://localhost:5000/Timesheets/dat-1547751781/lines/0" -H  "accept: application/com.my-company.my-product.timesheet-line+json" -H  "Content-Type: application/json-patch+json" -d "{  \"week\": 0,  \"year\": 2019,  \"day\": \"sunday\",  \"hours\": 0,  \"project\": \"ECEGR 5050\"}"
 
 # Example Git Commands:
 git status

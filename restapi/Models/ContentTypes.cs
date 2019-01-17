@@ -31,5 +31,7 @@ namespace restapi.Models
         public const string Deletion = "application/com.my-company.my-product.timesheet-deletion+json";
 
         public const string Replace = "application/com.my-company.my-product.timesheet-replace+json";
+
+        public const string Update = "application/com.my-company.my-product.timesheet-update+json";
     }
 }
