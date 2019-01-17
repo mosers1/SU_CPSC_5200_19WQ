@@ -26,6 +26,8 @@ namespace restapi.Controllers
                             Relationship = DocumentRelationship.Timesheets,
                             Reference = "/timesheets"
                         },   
+
+                         // Support in root document for creating a timesheet
                          new DocumentLink() 
                         { 
                             Method = Method.Post,

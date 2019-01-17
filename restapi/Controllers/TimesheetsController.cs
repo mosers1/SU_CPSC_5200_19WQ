@@ -9,6 +9,10 @@ namespace restapi.Controllers
     [Route("[controller]")]
     public class TimesheetsController : Controller
     {
+        // TODO: Plumb this to a lookup table or database so we know who the
+        // actual supervisors are. Hardcoding for HW #1.
+        private const int SUPERVISOR_ID = 5555;
+
         [HttpGet]
         [Produces(ContentTypes.Timesheets)]
         [ProducesResponseType(typeof(IEnumerable<Timecard>), 200)]
@@ -42,6 +46,10 @@ namespace restapi.Controllers
         [ProducesResponseType(typeof(Timecard), 200)]
         public Timecard Create([FromBody] DocumentResource resource)
         {
+            // FUTURE: We may want to verify the resource creating the timecard
+            // doesn't already have an open timecard. No requirement for this so
+            // leaving as-is for now.
+
             var timecard = new Timecard(resource.Resource);
 
             var entered = new Entered() { Resource = resource.Resource };
@@ -67,12 +75,14 @@ namespace restapi.Controllers
                 return NotFound();
             }
 
+            // Verify state allows this action
             if (timecard.Status != TimecardStatus.Cancelled && timecard.Status != TimecardStatus.Draft)
             {
                     return StatusCode(409, new InvalidStateError() { });
             }
 
             Database.Delete(timecardId);
+            // No state transition since the timecard no longer exists
             return Ok();
         }
 
@@ -117,6 +127,8 @@ namespace restapi.Controllers
         public IActionResult GetLines(string id)
         {
             Timecard timecard = Database.Find(id);
+
+            // No need for state validation here since this can be called at any time
 
             if (timecard != null)
             {
@@ -166,9 +178,6 @@ namespace restapi.Controllers
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         public IActionResult UpdateLine(string timecardId, int lineId, [FromBody] TimecardLine timecardLine)
         {
-            Console.WriteLine("******* timecardId = " + timecardId);
-            Console.WriteLine("******* lineId = " + lineId);
-
             Timecard timecard = Database.Find(timecardId);
 
             // Verify timecard exists
@@ -219,6 +228,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(ResourceIdError), 409)]
         public IActionResult Submit(string id, [FromBody] Submittal submittal)
         {
             Timecard timecard = Database.Find(id);
@@ -234,7 +244,14 @@ namespace restapi.Controllers
                 {
                     return StatusCode(409, new EmptyTimecardError() { });
                 }
-                
+
+                // Verify resource is the timecard creator. Also, allow supervisor
+                // to submit on employee's behalf (e.g. they are out sick).
+                if (submittal.Resource != timecard.Resource && submittal.Resource != SUPERVISOR_ID)
+                {
+                    return StatusCode(409, new ResourceIdError() { });
+                }
+
                 var transition = new Transition(submittal, TimecardStatus.Submitted);
                 timecard.Transitions.Add(transition);
                 return Ok(transition);
@@ -282,6 +299,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(ResourceIdError), 409)]
         public IActionResult Cancel(string id, [FromBody] Cancellation cancellation)
         {
             Timecard timecard = Database.Find(id);
@@ -292,7 +310,13 @@ namespace restapi.Controllers
                 {
                     return StatusCode(409, new InvalidStateError() { });
                 }
-                
+
+                // Verify resource is the supervisor
+                if (cancellation.Resource != SUPERVISOR_ID)
+                {
+                    return StatusCode(409, new ResourceIdError() { });
+                }
+
                 var transition = new Transition(cancellation, TimecardStatus.Cancelled);
                 timecard.Transitions.Add(transition);
                 return Ok(transition);
@@ -340,6 +364,7 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(InvalidStateError), 409)]
         public IActionResult Close(string id, [FromBody] Rejection rejection)
         {
             Timecard timecard = Database.Find(id);
@@ -350,7 +375,13 @@ namespace restapi.Controllers
                 {
                     return StatusCode(409, new InvalidStateError() { });
                 }
-                
+
+                // Verify resource is the supervisor
+                if (rejection.Resource != SUPERVISOR_ID)
+                {
+                    return StatusCode(409, new ResourceIdError() { });
+                }
+
                 var transition = new Transition(rejection, TimecardStatus.Rejected);
                 timecard.Transitions.Add(transition);
                 return Ok(transition);
@@ -398,17 +429,26 @@ namespace restapi.Controllers
         [ProducesResponseType(404)]
         [ProducesResponseType(typeof(InvalidStateError), 409)]
         [ProducesResponseType(typeof(EmptyTimecardError), 409)]
+        [ProducesResponseType(typeof(ResourceIdError), 409)]
         public IActionResult Approve(string id, [FromBody] Approval approval)
         {
             Timecard timecard = Database.Find(id);
 
             if (timecard != null)
             {
+                // Verify correct state transition
                 if (timecard.Status != TimecardStatus.Submitted)
                 {
                     return StatusCode(409, new InvalidStateError() { });
                 }
-                
+
+                // 5. Verify the timecard approver is not the timecard resource (must be supervisor)
+                // NOTE: This prevents a supervisor from submitting his/her own timecard
+                if (approval.Resource == timecard.Resource || approval.Resource != SUPERVISOR_ID)
+                {
+                    return StatusCode(409, new ResourceIdError() { });
+                }
+
                 var transition = new Transition(approval, TimecardStatus.Approved);
                 timecard.Transitions.Add(transition);
                 return Ok(transition);
